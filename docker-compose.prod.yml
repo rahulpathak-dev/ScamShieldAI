@@ -1,0 +1,149 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/db/migrations:/docker-entrypoint-initdb.d:ro
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scamshield-internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scamshield-internal
+
+  api:
+    image: ${SCAMSHIELD_API_IMAGE:?SCAMSHIELD_API_IMAGE is required}
+    restart: unless-stopped
+    environment:
+      SCAMSHIELD_ENVIRONMENT: production
+      SCAMSHIELD_API_PREFIX: /api/v1
+      SCAMSHIELD_LOG_LEVEL: ${SCAMSHIELD_LOG_LEVEL:-INFO}
+      SCAMSHIELD_CORS_ORIGINS: ${SCAMSHIELD_CORS_ORIGINS:?SCAMSHIELD_CORS_ORIGINS is required}
+      SCAMSHIELD_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SCAMSHIELD_JWT_SECRET_KEY: ${SCAMSHIELD_JWT_SECRET_KEY:?SCAMSHIELD_JWT_SECRET_KEY is required}
+      SCAMSHIELD_JWT_ALGORITHM: HS256
+      SCAMSHIELD_AUTH_COOKIE_NAME: ${SCAMSHIELD_AUTH_COOKIE_NAME:-scamshield_access_token}
+      SCAMSHIELD_OPENAI_API_KEY: ${SCAMSHIELD_OPENAI_API_KEY:-}
+      SCAMSHIELD_GEMINI_API_KEY: ${SCAMSHIELD_GEMINI_API_KEY:-}
+      SCAMSHIELD_LLAMA_BASE_URL: ${SCAMSHIELD_LLAMA_BASE_URL:-}
+      SCAMSHIELD_LLAMA_API_KEY: ${SCAMSHIELD_LLAMA_API_KEY:-}
+      SCAMSHIELD_ENTERPRISE_API_KEYS: ${SCAMSHIELD_ENTERPRISE_API_KEYS:-}
+      SCAMSHIELD_EMAIL_NOTIFICATIONS_ENABLED: ${SCAMSHIELD_EMAIL_NOTIFICATIONS_ENABLED:-false}
+      SCAMSHIELD_NOTIFICATION_FROM_EMAIL: ${SCAMSHIELD_NOTIFICATION_FROM_EMAIL:-}
+      SCAMSHIELD_SMTP_HOST: ${SCAMSHIELD_SMTP_HOST:-}
+      SCAMSHIELD_SMTP_PORT: ${SCAMSHIELD_SMTP_PORT:-587}
+      SCAMSHIELD_SMTP_USERNAME: ${SCAMSHIELD_SMTP_USERNAME:-}
+      SCAMSHIELD_SMTP_PASSWORD: ${SCAMSHIELD_SMTP_PASSWORD:-}
+      SCAMSHIELD_SMTP_USE_TLS: ${SCAMSHIELD_SMTP_USE_TLS:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)\""]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    networks:
+      - scamshield-internal
+      - scamshield-public
+
+  web:
+    image: ${SCAMSHIELD_WEB_IMAGE:?SCAMSHIELD_WEB_IMAGE is required}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?NEXT_PUBLIC_API_BASE_URL is required}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - scamshield-public
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - web
+      - api
+    networks:
+      - scamshield-public
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+    volumes:
+      - ./infra/monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    networks:
+      - scamshield-internal
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    networks:
+      - scamshield-internal
+
+  postgres-backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+      - ./infra/backup/postgres-backup.sh:/usr/local/bin/postgres-backup.sh:ro
+      - ./infra/backup/restore-postgres.sh:/usr/local/bin/restore-postgres.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while true; do sh /usr/local/bin/postgres-backup.sh; sleep 86400; done"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - scamshield-internal
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+
+networks:
+  scamshield-internal:
+    internal: true
+  scamshield-public:

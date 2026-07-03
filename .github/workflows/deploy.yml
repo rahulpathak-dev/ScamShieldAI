@@ -1,0 +1,40 @@
+name: ScamShieldAI Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: production
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Render deployment package
+        run: |
+          mkdir -p deploy
+          cp docker-compose.prod.yml deploy/docker-compose.prod.yml
+          cp -R infra deploy/infra
+      - name: Upload deployment package to S3
+        run: aws s3 sync deploy s3://${{ vars.DEPLOYMENT_BUCKET }}/scamshieldai/${{ github.sha }}/
+      - name: Trigger ECS service deployment
+        run: |
+          aws ecs update-service \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --service ${{ vars.ECS_SERVICE }} \
+            --force-new-deployment

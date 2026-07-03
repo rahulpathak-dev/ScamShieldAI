@@ -1,0 +1,20 @@
+groups:
+  - name: scamshieldai-availability
+    rules:
+      - alert: ScamShieldAPIDown
+        expr: up{job="scamshieldai-api-health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: ScamShieldAI API is unavailable
+          description: The API health endpoint has been unreachable for more than 2 minutes.
+
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: A Prometheus scrape target is down
+          description: One or more ScamShieldAI monitoring targets are unavailable.

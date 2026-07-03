@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "ScamShieldAI Mobile",
+    "slug": "scamshieldai-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "scamshieldai",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "permissions": []
+    }
+  }
+}

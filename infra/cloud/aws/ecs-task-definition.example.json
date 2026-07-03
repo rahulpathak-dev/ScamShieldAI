@@ -1,0 +1,50 @@
+{
+  "family": "scamshieldai",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::<account-id>:role/scamshieldai-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::<account-id>:role/scamshieldai-task",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "ghcr.io/<owner>/scamshieldai-api:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "SCAMSHIELD_ENVIRONMENT", "value": "production" },
+        { "name": "SCAMSHIELD_API_PREFIX", "value": "/api/v1" }
+      ],
+      "secrets": [
+        { "name": "SCAMSHIELD_DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:<region>:<account-id>:secret:scamshieldai/database-url" },
+        { "name": "SCAMSHIELD_JWT_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:<region>:<account-id>:secret:scamshieldai/jwt-secret" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/scamshieldai/api",
+          "awslogs-region": "<region>",
+          "awslogs-stream-prefix": "api"
+        }
+      }
+    },
+    {
+      "name": "web",
+      "image": "ghcr.io/<owner>/scamshieldai-web:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 3000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NEXT_PUBLIC_API_BASE_URL", "value": "https://api.scamshieldai.example" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/scamshieldai/web",
+          "awslogs-region": "<region>",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ]
+}

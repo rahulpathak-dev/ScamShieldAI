@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: scamshieldai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-scamshieldai}
+      POSTGRES_USER: ${POSTGRES_USER:-scamshield}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scamshield} -d ${POSTGRES_DB:-scamshieldai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+    container_name: scamshieldai-api
+    restart: unless-stopped
+    environment:
+      SCAMSHIELD_APP_NAME: ${SCAMSHIELD_APP_NAME:-ScamShieldAI API}
+      SCAMSHIELD_APP_VERSION: ${SCAMSHIELD_APP_VERSION:-0.1.0}
+      SCAMSHIELD_ENVIRONMENT: ${SCAMSHIELD_ENVIRONMENT:-local}
+      SCAMSHIELD_API_PREFIX: ${SCAMSHIELD_API_PREFIX:-/api/v1}
+      SCAMSHIELD_LOG_LEVEL: ${SCAMSHIELD_LOG_LEVEL:-INFO}
+      SCAMSHIELD_RATE_LIMIT_REQUESTS_PER_MINUTE: ${SCAMSHIELD_RATE_LIMIT_REQUESTS_PER_MINUTE:-240}
+      SCAMSHIELD_CORS_ORIGINS: ${SCAMSHIELD_CORS_ORIGINS:-http://localhost:3000}
+      SCAMSHIELD_DATABASE_URL: ${SCAMSHIELD_DATABASE_URL:-postgresql+psycopg://scamshield:change_me_dev_password@postgres:5432/scamshieldai}
+      SCAMSHIELD_JWT_SECRET_KEY: ${SCAMSHIELD_JWT_SECRET_KEY:-change-this-local-development-secret-at-least-32-chars}
+      SCAMSHIELD_JWT_ALGORITHM: ${SCAMSHIELD_JWT_ALGORITHM:-HS256}
+      SCAMSHIELD_JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${SCAMSHIELD_JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      SCAMSHIELD_AUTH_COOKIE_NAME: ${SCAMSHIELD_AUTH_COOKIE_NAME:-scamshield_access_token}
+      SCAMSHIELD_ASSISTANT_PROVIDER: ${SCAMSHIELD_ASSISTANT_PROVIDER:-local}
+      SCAMSHIELD_ASSISTANT_MODEL: ${SCAMSHIELD_ASSISTANT_MODEL:-gpt-4.1-mini}
+      SCAMSHIELD_OPENAI_API_KEY: ${SCAMSHIELD_OPENAI_API_KEY:-}
+      SCAMSHIELD_GEMINI_API_KEY: ${SCAMSHIELD_GEMINI_API_KEY:-}
+      SCAMSHIELD_LLAMA_BASE_URL: ${SCAMSHIELD_LLAMA_BASE_URL:-}
+      SCAMSHIELD_LLAMA_API_KEY: ${SCAMSHIELD_LLAMA_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    container_name: scamshieldai-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
