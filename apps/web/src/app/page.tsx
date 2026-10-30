@@ -36,6 +36,19 @@ const workflow = [
 const scamTypes = ["Phishing", "Banking fraud", "Crypto scams", "Investment scams", "Romance scams", "Job scams", "Lottery scams", "Identity theft"];
 const techStack = ["Next.js", "TypeScript", "Tailwind CSS", "FastAPI", "PostgreSQL", "SQLAlchemy", "Transformers", "Docker"];
 const trustSignals = ["No hardcoded secrets", "PostgreSQL persistence", "Secure headers", "Rate limiting", "Input validation", "JWT-ready auth"];
+const useCases = [
+  { title: "Consumers", description: "Check suspicious bank alerts, job offers, lottery messages, and unknown links before responding." },
+  { title: "Security teams", description: "Triage scam reports, review high-risk patterns, and preserve audit-friendly scan history." },
+  { title: "Enterprises", description: "Use API-first analysis for customer support, fraud operations, and trust and safety workflows." }
+];
+
+const faqs = [
+  { question: "Does ScamShieldAI store the full message?", answer: "The API stores structured scan evidence and a content hash for history. The UI avoids exposing raw sensitive content in database history." },
+  { question: "Can it detect URLs and emails?", answer: "Yes. The scanner accepts suspicious SMS, email, chat, and URL-style text and analyzes scam indicators." },
+  { question: "Is this production-ready?", answer: "The project includes secure configuration, Docker, PostgreSQL migrations, API docs, GitHub workflows, and deployment guidance." },
+  { question: "Can I deploy it to cloud platforms?", answer: "Yes. The README documents frontend, backend, database, Docker, and production environment setup paths." }
+];
+
 
 export default function Home() {
   return (
@@ -216,9 +229,46 @@ export default function Home() {
         </div>
       </section>
 
+
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-wide text-teal-300">Use cases</p>
+          <h2 className="mt-3 text-3xl font-bold text-white">Built for everyday users and security workflows</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            ScamShieldAI is designed for browser-first scam checking, but the architecture also supports analyst dashboards, alerting, extensions, mobile flows, and enterprise APIs.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {useCases.map((item) => (
+            <article key={item.title} className="rounded-md border border-white/10 bg-white/[0.03] p-5">
+              <h3 className="text-base font-semibold text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-white/[0.03] py-12">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-teal-300">FAQ</p>
+            <h2 className="mt-3 text-3xl font-bold text-white">Common questions</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Quick answers for users, reviewers, and recruiters opening the project for the first time.</p>
+          </div>
+          <div className="grid gap-3">
+            {faqs.map((item) => (
+              <article key={item.question} className="rounded-md border border-white/10 bg-slate-950 p-4">
+                <h3 className="text-sm font-semibold text-white">{item.question}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{item.answer}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
       <footer className="px-4 py-8 text-center text-sm text-slate-400">
         <p className="font-semibold text-white">ScamShieldAI</p>
         <p className="mt-2">NLP, explainable AI, and threat intelligence for safer digital finance.</p>
+        <p className="mt-3">Contact: security@scamshieldai.example</p>
       </footer>
     </main>
   );

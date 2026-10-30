@@ -49,6 +49,22 @@ export function toStoredScan(message: string, analysis: ScamAnalysis): StoredSca
   };
 }
 
+
+export function toStoredScanFromAnalysis(analysis: ScamAnalysis): StoredScan {
+  return {
+    id: analysis.analysis_id,
+    createdAt: analysis.created_at,
+    sourceType: analysis.source_type,
+    language: analysis.language,
+    messagePreview: "Stored securely in database. Message content is hidden for privacy.",
+    probability: deriveProbability(analysis.risk_score),
+    riskScore: analysis.risk_score,
+    riskLevel: analysis.risk_level,
+    category: deriveCategory(analysis),
+    explanation: deriveExplanation(analysis),
+    evidenceCount: analysis.evidence.length
+  };
+}
 export function getScanHistory(): StoredScan[] {
   if (typeof window === "undefined") return [];
 

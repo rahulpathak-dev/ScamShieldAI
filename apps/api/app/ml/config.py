@@ -1,7 +1,7 @@
 from pathlib import Path
 
 API_ROOT = Path(__file__).resolve().parents[2]
-PROJECT_ROOT = API_ROOT.parents[1]
+PROJECT_ROOT = API_ROOT.parent
 ML_ROOT = PROJECT_ROOT / "ml"
 DATA_ROOT = ML_ROOT / "data"
 RAW_DATA_DIR = DATA_ROOT / "raw"

@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.application.dto import AnalyzeTextCommand, ScamAnalysisDTO
 from app.application.use_cases.analyze_text_message import AnalyzeTextMessageUseCase
-from app.interfaces.api.dependencies import get_analyze_text_use_case
+from app.domain.repositories import AnalysisRepository
+from app.interfaces.api.dependencies import get_analysis_repository, get_analyze_text_use_case
 
 router = APIRouter(prefix="/analyze", tags=["analysis"])
 
@@ -18,3 +21,15 @@ def analyze_text(
     use_case: AnalyzeTextMessageUseCase = Depends(get_analyze_text_use_case),
 ) -> ScamAnalysisDTO:
     return use_case.execute(command)
+
+
+@router.get(
+    "/history",
+    response_model=list[ScamAnalysisDTO],
+    summary="List recent scam analysis history",
+)
+def list_analysis_history(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    repository: AnalysisRepository = Depends(get_analysis_repository),
+) -> list[ScamAnalysisDTO]:
+    return [ScamAnalysisDTO.from_domain(item) for item in repository.list_recent(limit=limit)]

@@ -53,6 +53,20 @@ export async function createHighRiskWarning(payload: HighRiskWarningRequest): Pr
   return response.json() as Promise<HighRiskWarning>;
 }
 
+
+export async function getAnalysisHistory(limit = 50): Promise<ScamAnalysis[]> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/analyze/history?limit=${limit}`, {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw await toApiClientError(response, "History request failed.");
+  }
+
+  return response.json() as Promise<ScamAnalysis[]>;
+}
 function normalizeUserText(value: string): string {
   return value.replace(/\u0000/g, " ").replace(/\s+/g, " ").trim();
 }

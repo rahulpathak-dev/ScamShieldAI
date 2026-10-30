@@ -11,3 +11,5 @@ class AnalysisRepository(Protocol):
     def get(self, analysis_id: UUID) -> ScamAnalysis | None:
         raise NotImplementedError
 
+    def list_recent(self, *, limit: int = 50) -> list[ScamAnalysis]:
+        raise NotImplementedError

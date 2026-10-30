@@ -158,6 +158,7 @@ Important endpoints:
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
 - `POST /api/v1/analyze/text`
+- `GET /api/v1/analyze/history`
 - `POST /api/v1/persuasion/detect`
 - `POST /api/v1/risk/score`
 - `POST /api/v1/notifications/high-risk-warning`
@@ -228,6 +229,44 @@ ScamShieldAI/
   ml/                     ML documentation and artifact folders
   .github/workflows/      CI/CD workflows
 ```
+
+
+## Deployment Guide
+
+Recommended production path:
+
+- Frontend: deploy `apps/web` to Vercel or Netlify.
+- Backend: deploy `apps/api` to Render, Railway, Fly.io, or a Docker host.
+- Database: use Supabase, Neon, Railway PostgreSQL, Render PostgreSQL, or managed AWS RDS.
+- Set `NEXT_PUBLIC_API_BASE_URL` in the frontend host to the deployed backend URL.
+- Set `SCAMSHIELD_DATABASE_URL`, `SCAMSHIELD_JWT_SECRET_KEY`, and `SCAMSHIELD_CORS_ORIGINS` in the backend host.
+- Never upload `.env` files to GitHub or a public frontend runtime.
+
+Production checklist:
+
+- Use HTTPS for frontend and backend.
+- Use a strong 32+ character JWT secret.
+- Use managed PostgreSQL backups.
+- Restrict CORS to the real frontend domain.
+- Rotate secrets before public demos.
+- Confirm `/health`, `/ready`, and `/docs` work after deployment.
+
+## Troubleshooting
+
+- If PostgreSQL says the database does not exist, use lowercase `scamshieldai` and rerun migrations.
+- If the backend cannot connect from local Windows, use `localhost` in `apps/api/.env`.
+- If the backend runs inside Docker, use `postgres` as the database hostname.
+- If frontend requests fail, check `NEXT_PUBLIC_API_BASE_URL`.
+- If `npm run build` fails with `ENOSPC`, free disk space and rerun install/build.
+- If Git tries to add `.env`, stop and check `.gitignore` before committing.
+
+## Browser Test Checklist
+
+- Open landing page on desktop and mobile viewport.
+- Open dashboard, analyzer, and history routes.
+- Scan a suspicious message and confirm score, category, explanation, and advice render.
+- Confirm browser console has no secret values or stack traces.
+- Test in Chrome, Edge, and Firefox where available.
 
 ## Future Roadmap
 

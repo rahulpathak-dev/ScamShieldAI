@@ -65,6 +65,25 @@ class PostgresAnalysisRepository(AnalysisRepository):
         if row is None:
             return None
 
+        return self._from_row(row)
+
+    def list_recent(self, *, limit: int = 50) -> list[ScamAnalysis]:
+        safe_limit = max(1, min(limit, 100))
+        statement = text(
+            """
+            SELECT *
+            FROM scam_analyses
+            ORDER BY created_at DESC
+            LIMIT :limit
+            """
+        )
+        with SessionLocal() as session:
+            rows = session.execute(statement, {"limit": safe_limit}).mappings().all()
+
+        return [self._from_row(row) for row in rows]
+
+    @staticmethod
+    def _from_row(row) -> ScamAnalysis:
         return ScamAnalysis(
             id=row["id"],
             source_type=SourceType(row["source_type"]),
@@ -101,3 +120,10 @@ class ResilientAnalysisRepository(AnalysisRepository):
         except Exception:
             logger.exception("Could not read scam analysis from PostgreSQL; using in-memory fallback.")
         return self._fallback.get(analysis_id)
+
+    def list_recent(self, *, limit: int = 50) -> list[ScamAnalysis]:
+        try:
+            return self._primary.list_recent(limit=limit)
+        except Exception:
+            logger.exception("Could not list scam analyses from PostgreSQL; using in-memory fallback.")
+            return self._fallback.list_recent(limit=limit)

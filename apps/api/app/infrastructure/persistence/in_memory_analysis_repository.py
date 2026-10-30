@@ -15,3 +15,5 @@ class InMemoryAnalysisRepository(AnalysisRepository):
     def get(self, analysis_id: UUID) -> ScamAnalysis | None:
         return self._items.get(analysis_id)
 
+    def list_recent(self, *, limit: int = 50) -> list[ScamAnalysis]:
+        return sorted(self._items.values(), key=lambda item: item.created_at, reverse=True)[:limit]
